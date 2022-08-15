@@ -16,6 +16,8 @@ struct ContentView: View {
     @State private var errorMessage = ""
     @State private var showingError = false
     
+    @State private var score = 0
+    
     var body: some View {
         NavigationView {
             List {
@@ -25,7 +27,7 @@ struct ContentView: View {
                         .disableAutocorrection(true)
                 }
                 
-                Section {
+                Section(score == 0 ? "" : "Score: \(score)") {
                     ForEach(usedWords, id: \.self) { word in
                         HStack {
                             Image(systemName: "\(word.count).circle")
@@ -42,12 +44,25 @@ struct ContentView: View {
             } message: {
                 Text(errorMessage)
             }
+            .toolbar {
+                Button("Restart", action: restartGame)
+            }
         }
     }
     
     func addNewWord() {
         let answer = newWord.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         guard answer.count > 0 else { return }
+        
+        guard isMoreThanTwoLetters(word: answer) else {
+            wordError(title: "Word is too short", message: "Think of a longer word!")
+            return
+        }
+        
+        guard isDifferentFromRoot(word: answer) else {
+            wordError(title: "Word is the same as the root word", message: "Ha-ha! Very funny.")
+            return
+        }
         
         guard isOriginal(word: answer) else {
             wordError(title: "Word used already", message: "Be more original!")
@@ -66,9 +81,26 @@ struct ContentView: View {
         
         withAnimation {
             usedWords.insert(answer, at: 0)
+            updateScore(wordCount: answer.count)
         }
         
         newWord = ""
+    }
+    
+    func updateScore(wordCount: Int) {
+        if(wordCount >= 5) {
+            score += wordCount * 2
+        } else {
+            score += wordCount
+        }
+    }
+    
+    func resetScore() {
+        score = 0
+    }
+    
+    func removeWords() {
+        usedWords.removeAll()
     }
     
     func startGame() {
@@ -81,6 +113,12 @@ struct ContentView: View {
         }
         
         fatalError("Could not load start.txt from bundle.")
+    }
+    
+    func restartGame() {
+        startGame()
+        resetScore()
+        removeWords()
     }
     
     func isOriginal(word: String) -> Bool {
@@ -107,6 +145,14 @@ struct ContentView: View {
         let misspelledRange = checker.rangeOfMisspelledWord(in: word, range: range, startingAt: 0, wrap: false, language: "en")
         
         return misspelledRange.location == NSNotFound
+    }
+    
+    func isMoreThanTwoLetters(word: String) -> Bool {
+        word.count >= 3
+    }
+    
+    func isDifferentFromRoot(word: String) -> Bool {
+        word != rootWord
     }
     
     func wordError(title: String, message: String) {
